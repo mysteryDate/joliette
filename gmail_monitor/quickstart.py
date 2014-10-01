@@ -1,4 +1,7 @@
 #!/usr/bin/python
+"""
+A quickstart gmail API sample for reference
+"""
 
 import httplib2
 
