@@ -1,0 +1,1 @@
+/gmail_monitor contains python files for checking a specific gmail inbox. You’ll have to authorize it yourself!
