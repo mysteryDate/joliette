@@ -55,29 +55,41 @@ class Monitor():
 		Updates most recent history, return new/modified threads
 		"""
 		self.recentThreads = self.service.users().history().list(
-			userId='me', startHistoryId=self.__maxHistoryId).execute()
+			userId='me', startHistoryId=self.__maxHistoryId, labelId="Label_8").execute()
 		self.__maxHistoryId = self.recentThreads['historyId']
 
 	# def start(self):
 	# 	"""
 	# 	Starts monitoring the inbox
 	# 	"""
+
+
 		
 gmail = Monitor()
 while True:
 	gmail.update()
+	# something changed
 	if gmail.recentThreads.has_key('history'):
-		pdb.set_trace()
+		modifiedMessages = set()
 		for thread in gmail.recentThreads['history']:
-			messageId = thread['messages'][0]['id']
-			newMessage = gmail.service.users().messages().get(
-				userId='me', id=messageId).execute()
-			messageText = newMessage['payload']['body']['data']
-			messageText = base64.urlsafe_b64decode(messageText.encode('UTF'))
-			print messageText.strip('\r\n ').split('======')[0]
+			if thread.has_key('messages'):
+				for message in thread['messages']:
+					modifiedMessages.add(message['id'])
+		pdb.set_trace()
+		print modifiedMessages
+	# 	for thread in gmail.recentThreads['history']:
+	# 		messageId = thread['messages'][0]['id']
+	# 		newMessage = gmail.service.users().messages().get(
+	# 			userId='me', id=messageId).execute()
+	# 		messageText = newMessage['payload']['body']['data']
+	# 		messageText = base64.urlsafe_b64decode(messageText.encode('UTF'))
+	# 		print messageText.strip('\r\n ').split('======')[0].rstrip('\r\n ')
 		# pdb.set_trace()
 	time.sleep(2)
 
+# "Label_3" = "Refuser"
+# "Label_5" = "RefuserAutomatique"
+# "Label_8" = "SMS"
 
 
 
