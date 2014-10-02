@@ -10,12 +10,19 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run
 
+# SMS label
+SMS_LABEL = "Label_8"
+TRASH = "TRASH"
+REFUSED_LABEL = "Label_3"
+ATOMATIC_REUSED_LABEL = "Label_5"
+
 class Monitor():
 	"""
 	A monitor for our gmail inbox
 	"""
 
 	__maxHistoryId = 0	# The most recent historical change
+	database = {} # Some message storage
 
 	def __init__(self):
 		# Path to the client_secret.json file downloaded from the Developer Console
@@ -55,16 +62,47 @@ class Monitor():
 		Updates most recent history, return new/modified threads
 		"""
 		self.recentThreads = self.service.users().history().list(
-			userId='me', startHistoryId=self.__maxHistoryId, labelId="Label_8").execute()
+			userId='me', startHistoryId=self.__maxHistoryId, labelId=SMS_LABEL).execute()
 		self.__maxHistoryId = self.recentThreads['historyId']
 
-	# def start(self):
-	# 	"""
-	# 	Starts monitoring the inbox
-	# 	"""
+	def populate(self):
+		"""
+		Get recent relevant messages
+		"""
+		messages = self.service.users().messages().list(
+			userId='me', labelIds=SMS_LABEL,
+			q="-label:{Refuser RefuserAutomatique}").execute()
+		if messages['messages']:
+			for message in messages['messages']:
+				newMessage = Message()
+				data = self.service.users().messages().get(
+					userId='me', id=message['id'], format='metadata').execute()
+				newMessage.active = True
+				for entry in data['payload']['headers']:
+					if entry['name'] == 'Date':
+						newMessage.time = entry['value']
+				newMessage.message = data['snippet'].split('====')[0].encode('utf')
+				self.database[message['id']] = newMessage
 
+	def printDatabase(self):
+		"""
+		Print the current database to the terminal
+		"""
+		print "\tId\t|Active\t|\tTime\t|\tMessage\t"
+		print "------------------------------------------"
+		for messageId in self.database.keys():
+			mess = self.database[messageId]
+			print messageId, "\t|", mess.active,"\t|", mess.time,"\t|", mess.message
 
-		
+class Message():
+	"""
+	A text message received into the mailbox
+	"""
+	def __init__(self):
+		self.active = False # Whether we want to display the message
+		self.time = time.localtime() # Right now!
+		self.message = ""
+
 gmail = Monitor()
 while True:
 	gmail.update()
@@ -91,6 +129,8 @@ while True:
 # "Label_5" = "RefuserAutomatique"
 # "Label_8" = "SMS"
 
+# message['payload']['headers'] is an array of dictionaries, 
+# one will have key 'date' and value the time in GMT (were -5)
 
 
 
