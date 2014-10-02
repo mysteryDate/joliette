@@ -76,12 +76,14 @@ class Monitor():
 			for message in messages['messages']:
 				newMessage = Message()
 				data = self.service.users().messages().get(
-					userId='me', id=message['id'], format='metadata').execute()
+					userId='me', id=message['id']).execute()
 				newMessage.active = True
 				for entry in data['payload']['headers']:
 					if entry['name'] == 'Date':
 						newMessage.time = entry['value']
-				newMessage.message = data['snippet'].split('====')[0].encode('utf')
+				text = data['payload']['body']['data']
+				text = base64.urlsafe_b64decode(text.encode('UTF'))
+				newMessage.message = text.strip('\r\n ').split('====')[0].rstrip('\r\n ').replace(' \r\n', '').replace('\r\n', '')
 				self.database[message['id']] = newMessage
 
 	def printDatabase(self):
