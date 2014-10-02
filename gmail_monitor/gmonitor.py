@@ -65,5 +65,29 @@ class Monitor():
 		
 gmail = Monitor()
 while True:
-	print gmail.update()
+	gmail.update()
+	if gmail.recentThreads.has_key('history'):
+		pdb.set_trace()
+		for thread in gmail.recentThreads['history']:
+			messageId = thread['messages'][0]['id']
+			newMessage = gmail.service.users().messages().get(
+				userId='me', id=messageId).execute()
+			messageText = newMessage['payload']['body']['data']
+			messageText = base64.urlsafe_b64decode(messageText.encode('UTF'))
+			print messageText.strip('\r\n ').split('======')[0]
+		# pdb.set_trace()
 	time.sleep(2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
