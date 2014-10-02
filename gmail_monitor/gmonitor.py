@@ -106,6 +106,7 @@ class Message():
 		self.message = ""
 
 gmail = Monitor()
+gmail.populate()
 while True:
 	gmail.update()
 	# something changed
@@ -115,16 +116,16 @@ while True:
 			if thread.has_key('messages'):
 				for message in thread['messages']:
 					modifiedMessages.add(message['id'])
-		pdb.set_trace()
-		print modifiedMessages
-	# 	for thread in gmail.recentThreads['history']:
-	# 		messageId = thread['messages'][0]['id']
-	# 		newMessage = gmail.service.users().messages().get(
-	# 			userId='me', id=messageId).execute()
-	# 		messageText = newMessage['payload']['body']['data']
-	# 		messageText = base64.urlsafe_b64decode(messageText.encode('UTF'))
-	# 		print messageText.strip('\r\n ').split('======')[0].rstrip('\r\n ')
 		# pdb.set_trace()
+		for messageId in modifiedMessages:
+			if messageId in gmail.database:
+				messageData = gmail.service.users().messages().get(
+					userId='me', id=messageId, format='minimal')
+				if 
+				pdb.set_trace()
+				pass
+		# for messageId in modifiedMessages:
+
 	time.sleep(2)
 
 # "Label_3" = "Refuser"
