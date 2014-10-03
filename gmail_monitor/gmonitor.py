@@ -14,7 +14,8 @@ from oauth2client.tools import run
 SMS_LABEL = "Label_8"
 TRASH = "TRASH"
 REFUSED_LABEL = "Label_3"
-ATOMATIC_REUSED_LABEL = "Label_5"
+AUTOMATIC_REFUSED_LABEL = "Label_5"
+FILTERED_LABELS = [TRASH, REFUSED_LABEL, AUTOMATIC_REFUSED_LABEL]
 
 class Monitor():
 	"""
@@ -65,6 +66,23 @@ class Monitor():
 			userId='me', startHistoryId=self.__maxHistoryId, labelId=SMS_LABEL).execute()
 		self.__maxHistoryId = self.recentThreads['historyId']
 
+	def addMessageToDatabase(self, messageId):
+		"""
+		Takes the id of an inbox message, requests it and adds it to the database
+		"""
+		newMessageEntry = Message()
+		newMessageData = self.service.users().messages().get(userId='me', id=messageId).execute()
+		if any([_ for _ in newMessageData['labelIds'] if _ in FILTERED_LABELS]):
+			return
+		newMessageEntry.active = True
+		for entry in newMessageData['payload']['headers']: 
+			if entry['name'] == 'Date':
+				newMessageEntry.time = entry['value']
+		text = newMessageData['payload']['body']['data']
+		text = base64.urlsafe_b64decode(text.encode('UTF'))
+		newMessageEntry.message = text.strip('\r\n ').split('====')[0].rstrip('\r\n ').replace(' \r\n', '').replace('\r\n', '')
+		self.database[messageId] = newMessageEntry
+
 	def populate(self):
 		"""
 		Get recent relevant messages
@@ -74,23 +92,13 @@ class Monitor():
 			q="-label:{Refuser RefuserAutomatique}").execute()
 		if messages['messages']:
 			for message in messages['messages']:
-				newMessage = Message()
-				data = self.service.users().messages().get(
-					userId='me', id=message['id']).execute()
-				newMessage.active = True
-				for entry in data['payload']['headers']:
-					if entry['name'] == 'Date':
-						newMessage.time = entry['value']
-				text = data['payload']['body']['data']
-				text = base64.urlsafe_b64decode(text.encode('UTF'))
-				newMessage.message = text.strip('\r\n ').split('====')[0].rstrip('\r\n ').replace(' \r\n', '').replace('\r\n', '')
-				self.database[message['id']] = newMessage
+				self.addMessageToDatabase(message['id'])
 
 	def printDatabase(self):
 		"""
 		Print the current database to the terminal
 		"""
-		print "\tId\t|Active\t|\tTime\t|\tMessage\t"
+		print "\tId\t\t|Active\t|\tTime\t\t|\tMessage\t"
 		print "------------------------------------------"
 		for messageId in self.database.keys():
 			mess = self.database[messageId]
@@ -107,30 +115,46 @@ class Message():
 
 gmail = Monitor()
 gmail.populate()
+gmail.printDatabase()
 while True:
 	gmail.update()
 	# something changed
 	if gmail.recentThreads.has_key('history'):
 		modifiedMessages = set()
+		# Get unique ids for every changed message
 		for thread in gmail.recentThreads['history']:
 			if thread.has_key('messages'):
 				for message in thread['messages']:
 					modifiedMessages.add(message['id'])
-		# pdb.set_trace()
 		for messageId in modifiedMessages:
+			# Check to see if it's moved to or from a filtered folder
 			if messageId in gmail.database:
+				print messageId, "\t|", gmail.database[messageId].message
 				messageData = gmail.service.users().messages().get(
-					userId='me', id=messageId, format='minimal')
-				if 
-				pdb.set_trace()
-				pass
-		# for messageId in modifiedMessages:
-
+					userId='me', id=messageId, format='minimal').execute()
+				if any([_ for _ in messageData['labelIds'] if _ in FILTERED_LABELS]):
+					gmail.database[messageData['id']].active = False
+					print "Deactivated"
+				else:
+					gmail.database[messageData['id']].active = True
+					print "Activated"
+			# Then it must be new
+			else:
+				gmail.addMessageToDatabase(messageId)
+				print messageId, "\t|", gmail.database[messageId].message
+				print "Added"
 	time.sleep(2)
 
 # "Label_3" = "Refuser"
 # "Label_5" = "RefuserAutomatique"
+# "Label_6" = "Notes"
+# "Label_7" = "Accepter"
 # "Label_8" = "SMS"
+
+# Other system labels
+# 'DRAFT'
+# 'CATEGORY_UPDATES'
+# 'UNREAD'
 
 # message['payload']['headers'] is an array of dictionaries, 
 # one will have key 'date' and value the time in GMT (were -5)
