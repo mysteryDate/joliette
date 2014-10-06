@@ -29,7 +29,7 @@ class Monitor():
     REFUSED_LABEL = "Label_3"
     AUTOMATIC_REFUSED_LABEL = "Label_5"
     FILTERED_LABELS = [TRASH, REFUSED_LABEL, AUTOMATIC_REFUSED_LABEL]
-    __maxHistoryId = 0  # The most recent historical change
+    max_history_id = 0  # The most recent historical change
     database = {} # Some message storage
 
     def __init__(self):
@@ -62,8 +62,8 @@ class Monitor():
 
         if threads['threads']:
             for thread in threads['threads']:
-                if thread['historyId'] > self.__maxHistoryId:
-                    self.__maxHistoryId = thread['historyId']
+                if thread['historyId'] > self.max_history_id:
+                    self.max_history_id = thread['historyId']
 
     def update(self):
         """
@@ -72,25 +72,24 @@ class Monitor():
         """
         try:
             self.recentThreads = self.service.users().history().list(
-                userId='me', startHistoryId=self.__maxHistoryId, labelId=self.SMS_LABEL).execute()
-            self.__maxHistoryId = self.recentThreads['historyId']
+                userId='me', startHistoryId=self.max_history_id, labelId=self.SMS_LABEL).execute()
+            self.max_history_id = self.recentThreads['historyId']
         except Exception as e: print (e)
 
     def add_message_to_database(self, messageId):
         """
         Takes the id of an inbox message, requests it and adds it to the database
+        returns false if the message is missing or undesireable
+        true otherwise
         """
         newMessageEntry = Message()
         try:
             newMessageData = self.service.users().messages().get(userId='me', id=messageId).execute()
-        except Exception as e: 
-            print (e)
-            traceback.print_exc()
-            return
+        except: 
+            return False # The message no longer exists
         if any([_ for _ in newMessageData['labelIds'] if _ in self.FILTERED_LABELS]):
-            newMessageEntry.active = False
-        else:
-            newMessageEntry.active = True
+            return False
+        newMessageEntry.active = True
         for entry in newMessageData['payload']['headers']:
             if entry['name'] == 'Date':
                 newMessageEntry.time = entry['value']
@@ -99,10 +98,11 @@ class Monitor():
         newMessageEntry.message = text.strip('\r\n ').split('====')[0].rstrip(
             '\r\n ').replace(' \r\n', '').replace('\r\n', '')
         self.database[messageId] = newMessageEntry
+        return True
 
     def populate(self):
         """
-        Get recent relevant messages
+        Get all relevant messages
         """
         # TODO automate the q= section
         try:
@@ -122,7 +122,7 @@ class Monitor():
         print "------------------------------------------"
         for messageId in self.database.keys():
             mess = self.database[messageId]
-            print messageId, "\t|", mess.active, "\t|", mess.time, "\t|", mess.message
+            print messageId, "\t|", mess.active, "\t|", mess.time, "\t\t\t|", mess.message
 
 class Message():
     """
@@ -133,13 +133,15 @@ class Message():
         self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
         self.message = ""
 
-def create_external_db(database):
+def create_external_db(monitor):
     """
-    Pass it the database of a Monitor
+    Pass it a monitor with a database
     """
     db = etree.Element("DATABASE")
-    for messageId in database.keys():
-        message = database[messageId]
+    max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
+    max_history_id.text = monitor.max_history_id
+    for messageId in monitor.database.keys():
+        message = monitor.database[messageId]
         elem = etree.SubElement(db, "MESSAGE")
         idNum = etree.SubElement(elem, "ID")
         activeValue = etree.SubElement(elem, "ACTIVE")
@@ -163,7 +165,8 @@ def read_external_db(monitor, filepath):
         newMessage.active = bool(entry.find("ACTIVE").text)
         newMessage.time = unicode(entry.find("TIME_RECEIVED").text)
         newMessage.message = entry.find("MESSAGE_TEXT").text
-        monitor.database[newId] = newMessages
+        monitor.database[newId] = newMessage
+    monitor.max_history_id = unicode(tree.find("MAX_HISTORY_ID").text)
 
 # "Label_3" = "Refuser"
 # "Label_5" = "RefuserAutomatique"

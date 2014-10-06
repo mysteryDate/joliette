@@ -1,4 +1,5 @@
 <DATABASE>
+  <MAX_HISTORY_ID>752064</MAX_HISTORY_ID>
   <MESSAGE>
     <ID>142cfad95efa1cfa</ID>
     <ACTIVE>True</ACTIVE>
@@ -258,12 +259,6 @@
     <MESSAGE_TEXT>LOVE YoU mes ti amours de mon Coeur Josh,Lou,Jade XXXX.......Joyeux Noël :)</MESSAGE_TEXT>
   </MESSAGE>
   <MESSAGE>
-    <ID>1435f68c9aa50c28</ID>
-    <ACTIVE>True</ACTIVE>
-    <TIME_RECEIVED>Sat, 04 Jan 2014 22:38:59 +0000</TIME_RECEIVED>
-    <MESSAGE_TEXT>Dany Dupuis stune chochotte !  Bonne année ;)</MESSAGE_TEXT>
-  </MESSAGE>
-  <MESSAGE>
     <ID>142caff7dbcdf31a</ID>
     <ACTIVE>True</ACTIVE>
     <TIME_RECEIVED>Sat, 07 Dec 2013 03:00:10 +0000</TIME_RECEIVED>
@@ -472,6 +467,12 @@
     <ACTIVE>True</ACTIVE>
     <TIME_RECEIVED>Thu, 26 Dec 2013 23:54:58 +0000</TIME_RECEIVED>
     <MESSAGE_TEXT>Jetaime bcp bcp ♥♥</MESSAGE_TEXT>
+  </MESSAGE>
+  <MESSAGE>
+    <ID>142cab971c669c0e</ID>
+    <ACTIVE>True</ACTIVE>
+    <TIME_RECEIVED>Sat, 07 Dec 2013 01:43:40 +0000</TIME_RECEIVED>
+    <MESSAGE_TEXT>Joyeux noel ma cocotte!! ;))</MESSAGE_TEXT>
   </MESSAGE>
   <MESSAGE>
     <ID>143460892f7ce92a</ID>

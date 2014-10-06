@@ -4,12 +4,14 @@ import pdb
 
 def main():
     gmail = gmonitor.Monitor()
+    # Get in most recent database
+    gmonitor.read_external_db(gmail, "message_database.xml")
 
     while(True):
         gmail.update()
+        # pdb.set_trace()
         # something changed
         if gmail.recentThreads.has_key('history'):
-            print "start"
             modifiedMessages = set()
             # Get unique ids for every changed message
             for thread in gmail.recentThreads['history']:
@@ -19,27 +21,30 @@ def main():
             for messageId in modifiedMessages:
                 # Check to see if it's moved to or from a filtered folder
                 if messageId in gmail.database:
-                    print messageId, "\t|", gmail.database[messageId].message
+                    report_string = str(messageId)+"\t| "+gmail.database[messageId].message+"\t|"
+                    status = "Unchanged"
+                    # pdb.set_trace()
                     try:
                         messageData = gmail.service.users().messages().get(
                             userId='me', id=messageId, format='minimal').execute()
                         if any([_ for _ in messageData['labelIds'] if _ in gmail.FILTERED_LABELS]):
-                            gmail.database[messageData['id']].active = False
-                            print "Deactivated"
+                            if gmail.database[messageData['id']].active == True:
+                                gmail.database[messageData['id']].active = False
+                                status = "Deactivated"
                         else:
-                            gmail.database[messageData['id']].active = True
-                            print "Activated"
+                            if gmail.database[messageData['id']].active == False:
+                                gmail.database[messageData['id']].active = True
+                                status = "Activated"
                     except:
                         # It was fully deleted
+                        status = "Deleted"
                         del gmail.database[messageId]
+                    if status != "Unchanged":
+                        print report_string, status
                 # Then it must be new
                 else:
-                    gmail.add_message_to_database(messageId)
-                    try:
-                        print messageId, "\t|", gmail.database[messageId].message, "| Added"
-                    except:
-                        print messageId, " not found"
-            print "end"
+                    if gmail.add_message_to_database(messageId):
+                        print messageId, "\t|", gmail.database[messageId].message, "\t| Added"
         time.sleep(0.5)
 
 main()
