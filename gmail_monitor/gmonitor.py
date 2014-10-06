@@ -1,9 +1,13 @@
 #!/usr/bin/python
+"""
+A monitor for a gmail inbox using the gmailAPI
+"""
 
 import httplib2
 import pdb
 import base64
-import time
+import traceback
+# import time
 
 # for creating xml files
 from lxml import etree
@@ -14,18 +18,17 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run
 
-# SMS label
-SMS_LABEL = "Label_8"
-TRASH = "TRASH"
-REFUSED_LABEL = "Label_3"
-AUTOMATIC_REFUSED_LABEL = "Label_5"
-FILTERED_LABELS = [TRASH, REFUSED_LABEL, AUTOMATIC_REFUSED_LABEL]
-
 class Monitor():
     """
     A monitor for our gmail inbox
     """
 
+    # SMS labels, TODO make this more general
+    SMS_LABEL = "Label_8"
+    TRASH = "TRASH"
+    REFUSED_LABEL = "Label_3"
+    AUTOMATIC_REFUSED_LABEL = "Label_5"
+    FILTERED_LABELS = [TRASH, REFUSED_LABEL, AUTOMATIC_REFUSED_LABEL]
     __maxHistoryId = 0  # The most recent historical change
     database = {} # Some message storage
 
@@ -46,7 +49,7 @@ class Monitor():
         # Try to retrieve credentials from storage or run the flow to generate them
         credentials = STORAGE.get()
         if credentials is None or credentials.invalid:
-          credentials = run(flow, STORAGE, http=http)
+            credentials = run(flow, STORAGE, http=http)
 
         # Authorize the httplib2.Http object with our credentials
         http = credentials.authorize(http)
@@ -65,40 +68,53 @@ class Monitor():
     def update(self):
         """
         Updates most recent history, return new/modified threads
+        To alleviate server errors, it skips sometimes
         """
-        self.recentThreads = self.service.users().history().list(
-            userId='me', startHistoryId=self.__maxHistoryId, labelId=SMS_LABEL).execute()
-        self.__maxHistoryId = self.recentThreads['historyId']
+        try:
+            self.recentThreads = self.service.users().history().list(
+                userId='me', startHistoryId=self.__maxHistoryId, labelId=self.SMS_LABEL).execute()
+            self.__maxHistoryId = self.recentThreads['historyId']
+        except Exception as e: print (e)
 
-    def addMessageToDatabase(self, messageId):
+    def add_message_to_database(self, messageId):
         """
         Takes the id of an inbox message, requests it and adds it to the database
         """
         newMessageEntry = Message()
-        newMessageData = self.service.users().messages().get(userId='me', id=messageId).execute()
-        if any([_ for _ in newMessageData['labelIds'] if _ in FILTERED_LABELS]):
+        try:
+            newMessageData = self.service.users().messages().get(userId='me', id=messageId).execute()
+        except Exception as e: 
+            print (e)
+            traceback.print_exc()
             return
-        newMessageEntry.active = True
-        for entry in newMessageData['payload']['headers']: 
+        if any([_ for _ in newMessageData['labelIds'] if _ in self.FILTERED_LABELS]):
+            newMessageEntry.active = False
+        else:
+            newMessageEntry.active = True
+        for entry in newMessageData['payload']['headers']:
             if entry['name'] == 'Date':
                 newMessageEntry.time = entry['value']
         text = newMessageData['payload']['body']['data']
         text = base64.urlsafe_b64decode(text.encode('UTF'))
-        newMessageEntry.message = text.strip('\r\n ').split('====')[0].rstrip('\r\n ').replace(' \r\n', '').replace('\r\n', '')
+        newMessageEntry.message = text.strip('\r\n ').split('====')[0].rstrip(
+            '\r\n ').replace(' \r\n', '').replace('\r\n', '')
         self.database[messageId] = newMessageEntry
 
     def populate(self):
         """
         Get recent relevant messages
         """
-        messages = self.service.users().messages().list(
-            userId='me', labelIds=SMS_LABEL,
-            q="-label:{Refuser RefuserAutomatique}").execute()
+        # TODO automate the q= section
+        try:
+            messages = self.service.users().messages().list(
+                userId='me', labelIds=self.SMS_LABEL,
+                q="-label:{Refuser RefuserAutomatique}").execute()
+        except Exception as e: print (e)
         if messages['messages']:
             for message in messages['messages']:
-                self.addMessageToDatabase(message['id'])
+                self.add_message_to_database(message['id'])
 
-    def printDatabase(self):
+    def print_database(self):
         """
         Print the current database to the terminal
         """
@@ -106,7 +122,7 @@ class Monitor():
         print "------------------------------------------"
         for messageId in self.database.keys():
             mess = self.database[messageId]
-            print messageId, "\t|", mess.active,"\t|", mess.time,"\t|", mess.message
+            print messageId, "\t|", mess.active, "\t|", mess.time, "\t|", mess.message
 
 class Message():
     """
@@ -114,10 +130,8 @@ class Message():
     """
     def __init__(self):
         self.active = False # Whether we want to display the message
-        self.time = time.localtime() # Right now!
+        self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
         self.message = ""
-
-gmail = Monitor()
 
 def create_external_db(database):
     """
@@ -149,40 +163,7 @@ def read_external_db(monitor, filepath):
         newMessage.active = bool(entry.find("ACTIVE").text)
         newMessage.time = unicode(entry.find("TIME_RECEIVED").text)
         newMessage.message = entry.find("MESSAGE_TEXT").text
-        monitor.database[newId] = newMessage 
-
-pdb.set_trace()
-
-# gmail.populate()
-# gmail.printDatabase()
-# while True:
-#   gmail.update()
-#   # something changed
-#   if gmail.recentThreads.has_key('history'):
-#       modifiedMessages = set()
-#       # Get unique ids for every changed message
-#       for thread in gmail.recentThreads['history']:
-#           if thread.has_key('messages'):
-#               for message in thread['messages']:
-#                   modifiedMessages.add(message['id'])
-#       for messageId in modifiedMessages:
-#           # Check to see if it's moved to or from a filtered folder
-#           if messageId in gmail.database:
-#               print messageId, "\t|", gmail.database[messageId].message
-#               messageData = gmail.service.users().messages().get(
-#                   userId='me', id=messageId, format='minimal').execute()
-#               if any([_ for _ in messageData['labelIds'] if _ in FILTERED_LABELS]):
-#                   gmail.database[messageData['id']].active = False
-#                   print "Deactivated"
-#               else:
-#                   gmail.database[messageData['id']].active = True
-#                   print "Activated"
-#           # Then it must be new
-#           else:
-#               gmail.addMessageToDatabase(messageId)
-#               print messageId, "\t|", gmail.database[messageId].message
-#               print "Added"
-#   time.sleep(2)
+        monitor.database[newId] = newMessages
 
 # "Label_3" = "Refuser"
 # "Label_5" = "RefuserAutomatique"
@@ -195,17 +176,5 @@ pdb.set_trace()
 # 'CATEGORY_UPDATES'
 # 'UNREAD'
 
-# message['payload']['headers'] is an array of dictionaries, 
+# message['payload']['headers'] is an array of dictionaries,
 # one will have key 'date' and value the time in GMT (were -5)
-
-
-
-
-
-
-
-
-
-
-
-
