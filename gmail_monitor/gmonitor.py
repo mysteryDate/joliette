@@ -6,7 +6,6 @@ A monitor for a gmail inbox using the gmailAPI
 import httplib2
 import pdb
 import base64
-import traceback
 # import time
 
 # for creating xml files
