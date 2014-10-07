@@ -18,6 +18,7 @@ def main():
                 if thread.has_key('messages'):
                     for message in thread['messages']:
                         modifiedMessages.add(message['id'])
+            print "Number of new messages:", len(modifiedMessages)
             for messageId in modifiedMessages:
                 # Check to see if it's moved to or from a filtered folder
                 if messageId in gmail.database:

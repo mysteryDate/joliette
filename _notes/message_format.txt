@@ -1,0 +1,2 @@
+When adding a new text we have:
+ /aj ||[PHONE_NUMBER]|| [MESSAGE]

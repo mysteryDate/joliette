@@ -69,6 +69,8 @@ class Monitor():
         """
         Updates most recent history, return new/modified threads
         To alleviate server errors, it skips sometimes
+        Also, it's possible that we break the rate limit here,
+        if we do that, we will not update the historyId
         """
         try:
             self.recentThreads = self.service.users().history().list(
@@ -85,12 +87,16 @@ class Monitor():
         newMessageEntry = Message()
         try:
             newMessageData = self.service.users().messages().get(userId='me', id=messageId).execute()
-        except: 
+        except Exception as e: 
+            print (e)
             return False # The message no longer exists
         if any([_ for _ in newMessageData['labelIds'] if _ in self.FILTERED_LABELS]):
-            return False
+            return False # We don't want that message
         newMessageEntry.active = True
         for entry in newMessageData['payload']['headers']:
+            if entry['name'] == 'From':
+                # Phone number without area code
+                newMessageEntry.sender = entry['value'].split('+')[1].split('"')[0][4:]
             if entry['name'] == 'Date':
                 newMessageEntry.time = entry['value']
         text = newMessageData['payload']['body']['data']
@@ -118,17 +124,18 @@ class Monitor():
         """
         Print the current database to the terminal
         """
-        print "\tId\t\t|Active\t|\tTime\t\t|\tMessage\t"
+        print "\tId\t\t| Number\t\t|\tTime\t\t\t|\tMessage\t"
         print "------------------------------------------"
         for messageId in self.database.keys():
             mess = self.database[messageId]
-            print messageId, "\t|", mess.active, "\t|", mess.time, "\t\t\t|", mess.message
+            print messageId, "\t|", mess.sender, "\t|", mess.time, "\t|", mess.message
 
 class Message():
     """
     A text message received into the mailbox
     """
     def __init__(self):
+        self.sender = "" # The phone number of the sender
         self.active = False # Whether we want to display the message
         self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
         self.message = ""
@@ -144,10 +151,12 @@ def create_external_db(monitor):
         message = monitor.database[messageId]
         elem = etree.SubElement(db, "MESSAGE")
         idNum = etree.SubElement(elem, "ID")
+        sender = etree.SubElement(elem, "SENDER")
         activeValue = etree.SubElement(elem, "ACTIVE")
         time = etree.SubElement(elem, "TIME_RECEIVED")
         messageText = etree.SubElement(elem, "MESSAGE_TEXT")
         idNum.text = messageId
+        sender.text = message.sender
         activeValue.text = str(message.active)
         time.text = message.time
         messageText.text = unicode(message.message, 'utf-8')
