@@ -4,5 +4,6 @@ Dependencies:
 - Python 2.7
 - GMail API for Python (https://developers.google.com/gmail/api/quickstart/quickstart-python)
 - lxml (http://lxml.de/tutorial.html)
+- simpleOSC (http://opensoundcontrol.org/implementation/python-simple-osc)
 
 It might be interesting to try context.io, which can push (via webhooks). The difficulty there is starting a server on the local machine to receive post requests, so I’ll leave it be for now.

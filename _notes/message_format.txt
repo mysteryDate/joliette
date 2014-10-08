@@ -1,6 +1,8 @@
 When adding a new text we have:
  /aj ||[PHONE_NUMBER]||[MESSAGE]
 
+PHONE_NUMBER = ###-###-####
+
 Deleting
  /del [same format as above]
 

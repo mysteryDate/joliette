@@ -25,7 +25,7 @@ class Monitor():
     filtered_label_ids = []
     filtered_label_names = []
 
-    def __init__(self, match_label, filtered_labels=[], verbose=True):
+    def __init__(self, match_label, filtered_labels=[], verbose=False):
         """
         match_label is a string for the label we look under (e.x. "SMS")
         filteredLabels is a list of strings of label names to be filtered
@@ -97,8 +97,8 @@ class Monitor():
         db = etree.Element("DATABASE")
         max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
         max_history_id.text = self.max_history_id
-        for message_igmaild in self.database.keys():
-            message = self.database[message_igmaild]
+        for message_id in self.database.keys():
+            message = self.database[message_id]
             elem = etree.SubElement(db, "MESSAGE")
             id_number = etree.SubElement(elem, "ID")
             sender = etree.SubElement(elem, "SENDER")
@@ -106,7 +106,7 @@ class Monitor():
             time = etree.SubElement(elem, "TIME_RECEIVED")
             last_displayed = etree.SubElement(elem, "LAST_DISPLAYED")
             message_text = etree.SubElement(elem, "MESSAGE_TEXT")
-            id_number.text = message_igmaild
+            id_number.text = message_id
             sender.text = message.sender
             active_value.text = str(message.active)
             time.text = message.time
@@ -190,8 +190,8 @@ class Monitor():
         new_message_entry.active = True
         for entry in new_message_data['payload']['headers']:
             if entry['name'] == 'From':
-                # Phone number without area code
-                new_message_entry.sender = entry['value'].split('+')[1].split('"')[0][4:]
+                # Phone number with area code
+                new_message_entry.sender = entry['value'].split('+')[1].split('"')[0][-10:]
             if entry['name'] == 'Date':
                 new_message_entry.time = entry['value']
         text = new_message_data['payload']['body']['data']
