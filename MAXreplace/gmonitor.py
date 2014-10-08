@@ -24,6 +24,9 @@ class Monitor():
     database = {} # Some message storage
     filtered_label_ids = []
     filtered_label_names = []
+    # These are sent along to max
+    messages_to_add = []
+    messages_to_delete = [] 
 
     def __init__(self, match_label, filtered_labels=[], verbose=False):
         """
@@ -156,23 +159,28 @@ class Monitor():
                     try:
                         messageData = self.service.users().messages().get(
                             userId='me', id=message_id, format='minimal').execute()
-                        if any([_ for _ in messageData['labelIds'] if _ in self.FILTERED_LABELS]):
+                        if any([_ for _ in messageData['labelIds'] if _ in self.filtered_label_ids]):
                             if self.database[messageData['id']].active == True:
                                 self.database[messageData['id']].active = False
                                 status = "Deactivated"
+                                self.messages_to_delete.append(self.database[message_id])
                         else:
                             if self.database[messageData['id']].active == False:
                                 self.database[messageData['id']].active = True
                                 status = "Activated"
-                    except:
+                                self.messages_to_add.append(self.database[message_id])
+                    except Exception as e:
+                        if self._verbose: print (e)
                         # It was fully deleted
                         status = "Deleted"
+                        self.messages_to_delete.append(self.database[message_id])
                         del self.database[message_id]
                     if status != "Unchanged" and self._verbose:
                         print report_string, status
                 # Then it must be new
                 else:
-                    self.add_message_to_database(message_id)
+                    if self.add_message_to_database(message_id):
+                        self.messages_to_add.append(self.database[message_id])
                         
     def add_message_to_database(self, message_id):
         """
@@ -203,20 +211,6 @@ class Monitor():
         if self._verbose:
             print str(message_id)+"\t| "+new_message_entry.message+"\t| Added"
         return True
-
-    def start(self, interval=2):
-        """
-        Start polling the inbox
-        interval is time in seconds between polls
-        if it is too low (<~0.5), you may exceed the rate limit
-        """
-        pass
-
-    def stop(self):
-        """
-        Stops polling
-        """
-        pass
 
     def print_database(self):
         """
