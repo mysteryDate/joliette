@@ -1,2 +1,27 @@
 When adding a new text we have:
- /aj ||[PHONE_NUMBER]|| [MESSAGE]
+ /aj ||[PHONE_NUMBER]||[MESSAGE]
+
+Deleting
+ /del [same format as above]
+
+Starting up, topc, mac first
+ /IR 0
+ /IRef 0
+ /IA 0
+ /ini
+
+then /ver every 25 seconds or so
+
+starting up pc
+tomac: /deb
+then four startup messages
+then 
+tomac /wRf 236
+tomac /wR 127
+
+just pc:
+host 192.168.7.254
+/deb
+
+ever time it receives a message /wR [incremented number]
+which I think

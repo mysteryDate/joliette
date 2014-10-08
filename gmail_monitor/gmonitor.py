@@ -6,7 +6,6 @@ A monitor for a gmail inbox using the gmailAPI
 import httplib2
 import pdb
 import base64
-# import time
 
 # for creating xml files
 from lxml import etree
@@ -21,17 +20,18 @@ class Monitor():
     """
     A monitor for our gmail inbox
     """
-
-    # SMS labels, TODO make this more general
-    SMS_LABEL = "Label_8"
-    TRASH = "TRASH"
-    REFUSED_LABEL = "Label_3"
-    AUTOMATIC_REFUSED_LABEL = "Label_5"
-    FILTERED_LABELS = [TRASH, REFUSED_LABEL, AUTOMATIC_REFUSED_LABEL]
     max_history_id = 0  # The most recent historical change
     database = {} # Some message storage
+    filtered_label_ids = []
+    filtered_label_names = []
 
-    def __init__(self):
+    def __init__(self, match_label, filtered_labels=[], verbose=True):
+        """
+        match_label is a string for the label we look under (e.x. "SMS")
+        filteredLabels is a list of strings of label names to be filtered
+        verbose turns on error logging
+        For now, we need a match label
+        """
         # Path to the client_secret.json file downloaded from the Developer Console
         CLIENT_SECRET_FILE = 'client_secret.json'
 
@@ -56,78 +56,192 @@ class Monitor():
         # Build the Gmail service from discovery
         self.service = build('gmail', 'v1', http=http)
 
-        # Get the right history id, can always run a threads().list() if you need previous ones
-        threads = self.service.users().threads().list(userId='me').execute()
+        # Get in the necessary labels
+        label_data = self.service.users().labels().list(userId='me').execute()
+        if label_data.has_key('labels'):
+            for label in label_data['labels']:
+                if label['name'] == match_label:
+                    self.match_label_id = label['id']
+                    self.match_label_name = match_label
+                if label['name'] in filtered_labels:
+                    self.filtered_label_ids.append(label['id'])
+                    self.filtered_label_names.append(label['name'])
 
-        if threads['threads']:
-            for thread in threads['threads']:
-                if thread['historyId'] > self.max_history_id:
-                    self.max_history_id = thread['historyId']
+        if verbose:
+            self._verbose = True
+        else:
+            self._verbose = False
+
+    def load(self, file_path):
+        """
+        Load in an xml file containing messages
+        """
+        tree = etree.parse(file_path)
+        for entry in tree.findall('MESSAGE'):
+            new_message = Message()
+            newId = unicode(entry.find("ID").text)
+            new_message.active = bool(entry.find("ACTIVE").text)
+            new_message.time = unicode(entry.find("TIME_RECEIVED").text)
+            new_message.sender = unicode(entry.find("SENDER").text)
+            new_message.last_displayed = unicode(entry.find("LAST_DISPLAYED").text)
+            new_message.message = entry.find("MESSAGE_TEXT").text
+            self.database[newId] = new_message
+        self.max_history_id = unicode(tree.find("MAX_HISTORY_ID").text)
+        if self._verbose:
+            print "Loaded", len(tree.findall('MESSAGE')), "messages"
+
+    def save(self, file_path):
+        """
+        Save current database to disk
+        """
+        db = etree.Element("DATABASE")
+        max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
+        max_history_id.text = self.max_history_id
+        for message_igmaild in self.database.keys():
+            message = self.database[message_igmaild]
+            elem = etree.SubElement(db, "MESSAGE")
+            id_number = etree.SubElement(elem, "ID")
+            sender = etree.SubElement(elem, "SENDER")
+            active_value = etree.SubElement(elem, "ACTIVE")
+            time = etree.SubElement(elem, "TIME_RECEIVED")
+            last_displayed = etree.SubElement(elem, "LAST_DISPLAYED")
+            message_text = etree.SubElement(elem, "MESSAGE_TEXT")
+            id_number.text = message_igmaild
+            sender.text = message.sender
+            active_value.text = str(message.active)
+            time.text = message.time
+            last_displayed.text = message.last_displayed
+            message_text.text = message.message
+        tree = etree.ElementTree(db)
+        tree.write(file_path, encoding="UTF-8", pretty_print=True)
+        if self._verbose:
+            print "Saved", len(self.database), "messages"
+
+    def get_message(self, message_id):
+        """
+        Returns full data for a particular message
+        """
+        try:
+            return self.service.users().messages().get(userId='me', id=message_id).execute()
+        except Exception as e: 
+            if self._verbose: print(e)
+            return False
 
     def update(self):
         """
-        Updates most recent history, return new/modified threads
-        To alleviate server errors, it skips sometimes
-        Also, it's possible that we break the rate limit here,
-        if we do that, we will not update the historyId
+        Checks for new/changed messages and updates the database
+        Can throw errors for too many requests, but will not crash
         """
         try:
             self.recentThreads = self.service.users().history().list(
-                userId='me', startHistoryId=self.max_history_id, labelId=self.SMS_LABEL).execute()
+                userId='me', startHistoryId=self.max_history_id, labelId=self.match_label_id).execute()
             self.max_history_id = self.recentThreads['historyId']
-        except Exception as e: print (e)
-
-    def add_message_to_database(self, messageId):
+        except Exception as e: 
+            if self._verbose: print (e)
+            return
+        if self.recentThreads.has_key('history'): # Something has changed
+            modified_messages = set()
+            # Get unique ids for every changed message
+            for thread in self.recentThreads['history']:
+                if thread.has_key('messages'):
+                    for message in thread['messages']:
+                        modified_messages.add(message['id'])
+            if self._verbose: print "Number of new messages:", len(modified_messages)
+            for message_id in modified_messages:
+                # Check to see if it's moved to or from a filtered folder
+                if message_id in self.database:
+                    report_string = str(message_id)+"\t| "+self.database[message_id].message+"\t|"
+                    status = "Unchanged"
+                    # pdb.set_trace()
+                    try:
+                        messageData = self.service.users().messages().get(
+                            userId='me', id=message_id, format='minimal').execute()
+                        if any([_ for _ in messageData['labelIds'] if _ in self.FILTERED_LABELS]):
+                            if self.database[messageData['id']].active == True:
+                                self.database[messageData['id']].active = False
+                                status = "Deactivated"
+                        else:
+                            if self.database[messageData['id']].active == False:
+                                self.database[messageData['id']].active = True
+                                status = "Activated"
+                    except:
+                        # It was fully deleted
+                        status = "Deleted"
+                        del self.database[message_id]
+                    if status != "Unchanged" and self._verbose:
+                        print report_string, status
+                # Then it must be new
+                else:
+                    self.add_message_to_database(message_id)
+                        
+    def add_message_to_database(self, message_id):
         """
         Takes the id of an inbox message, requests it and adds it to the database
-        returns false if the message is missing or undesireable
-        true otherwise
+        If the message is fully deleted, it will throw a 404 error
+        Returns true if the message was added, false otherwise
         """
-        newMessageEntry = Message()
-        try:
-            newMessageData = self.service.users().messages().get(userId='me', id=messageId).execute()
-        except Exception as e: 
-            print (e)
-            return False # The message no longer exists
-        if any([_ for _ in newMessageData['labelIds'] if _ in self.FILTERED_LABELS]):
+        new_message_entry = Message()
+        new_message_data = self.get_message(message_id)
+        if not new_message_data:
+            return False # Couln't get the message, it's probably deleted
+        if any([_ for _ in new_message_data['labelIds'] if _ in self.filtered_label_ids]):
+            if self._verbose: print "Message", message_id, "has a filtered label"
             return False # We don't want that message
-        newMessageEntry.active = True
-        for entry in newMessageData['payload']['headers']:
+        new_message_entry.active = True
+        for entry in new_message_data['payload']['headers']:
             if entry['name'] == 'From':
                 # Phone number without area code
-                newMessageEntry.sender = entry['value'].split('+')[1].split('"')[0][4:]
+                new_message_entry.sender = entry['value'].split('+')[1].split('"')[0][4:]
             if entry['name'] == 'Date':
-                newMessageEntry.time = entry['value']
-        text = newMessageData['payload']['body']['data']
+                new_message_entry.time = entry['value']
+        text = new_message_data['payload']['body']['data']
         text = base64.urlsafe_b64decode(text.encode('UTF'))
-        newMessageEntry.message = text.strip('\r\n ').split('====')[0].rstrip(
+        new_message_entry.message = text.strip('\r\n ').split('====')[0].rstrip(
             '\r\n ').replace(' \r\n', '').replace('\r\n', '')
-        self.database[messageId] = newMessageEntry
+        new_message_entry.message = unicode(new_message_entry.message, 'utf-8')
+        self.database[message_id] = new_message_entry
+        if self._verbose:
+            print str(message_id)+"\t| "+new_message_entry.message+"\t| Added"
         return True
 
-    def populate(self):
+    def start(self, interval=2):
         """
-        Get all relevant messages
+        Start polling the inbox
+        interval is time in seconds between polls
+        if it is too low (<~0.5), you may exceed the rate limit
         """
-        # TODO automate the q= section
-        try:
-            messages = self.service.users().messages().list(
-                userId='me', labelIds=self.SMS_LABEL,
-                q="-label:{Refuser RefuserAutomatique}").execute()
-        except Exception as e: print (e)
-        if messages['messages']:
-            for message in messages['messages']:
-                self.add_message_to_database(message['id'])
+        pass
+
+    def stop(self):
+        """
+        Stops polling
+        """
+        pass
 
     def print_database(self):
         """
         Print the current database to the terminal
         """
-        print "\tId\t\t| Number\t\t|\tTime\t\t\t|\tMessage\t"
-        print "------------------------------------------"
+        print "\tId\t\t| Number\t|\tTime\t\t\t\t|\tMessage\t"
+        print "-"*150 #A horizontal line
         for messageId in self.database.keys():
             mess = self.database[messageId]
             print messageId, "\t|", mess.sender, "\t|", mess.time, "\t|", mess.message
+
+    def populate(self):
+        """
+        Gets all relevant messages in the inbox, regardless of history
+        This is an expensive call, use it rarely (if ever)
+        """
+        try:
+            query = "-label:{"+(' ').join(self.filtered_label_names)+"}"
+            messages = self.service.users().messages().list(
+                userId='me', labelIds=self.match_label_id, q=query).execute()
+            if messages['messages']:
+                for message in messages['messages']:
+                    self.add_message_to_database(message['id'])
+        except Exception as e:
+            if self._verbose: print(e)
 
 class Message():
     """
@@ -138,54 +252,4 @@ class Message():
         self.active = False # Whether we want to display the message
         self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
         self.message = ""
-
-def create_external_db(monitor):
-    """
-    Pass it a monitor with a database
-    """
-    db = etree.Element("DATABASE")
-    max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
-    max_history_id.text = monitor.max_history_id
-    for messageId in monitor.database.keys():
-        message = monitor.database[messageId]
-        elem = etree.SubElement(db, "MESSAGE")
-        idNum = etree.SubElement(elem, "ID")
-        sender = etree.SubElement(elem, "SENDER")
-        activeValue = etree.SubElement(elem, "ACTIVE")
-        time = etree.SubElement(elem, "TIME_RECEIVED")
-        messageText = etree.SubElement(elem, "MESSAGE_TEXT")
-        idNum.text = messageId
-        sender.text = message.sender
-        activeValue.text = str(message.active)
-        time.text = message.time
-        messageText.text = unicode(message.message, 'utf-8')
-    tree = etree.ElementTree(db)
-    tree.write("message_database.xml", encoding="UTF-8", pretty_print=True)
-
-def read_external_db(monitor, filepath):
-    """
-    Read in an external database
-    """
-    tree = etree.parse(filepath)
-    for entry in tree.findall('MESSAGE'):
-        newMessage = Message()
-        newId = unicode(entry.find("ID").text)
-        newMessage.active = bool(entry.find("ACTIVE").text)
-        newMessage.time = unicode(entry.find("TIME_RECEIVED").text)
-        newMessage.message = entry.find("MESSAGE_TEXT").text
-        monitor.database[newId] = newMessage
-    monitor.max_history_id = unicode(tree.find("MAX_HISTORY_ID").text)
-
-# "Label_3" = "Refuser"
-# "Label_5" = "RefuserAutomatique"
-# "Label_6" = "Notes"
-# "Label_7" = "Accepter"
-# "Label_8" = "SMS"
-
-# Other system labels
-# 'DRAFT'
-# 'CATEGORY_UPDATES'
-# 'UNREAD'
-
-# message['payload']['headers'] is an array of dictionaries,
-# one will have key 'date' and value the time in GMT (were -5)
+        self.last_displayed = "" # The most recent time we displayed the message
