@@ -47,6 +47,9 @@ def pass_on_messages(foo, bar):
             mess = gmail.messages_to_delete.pop(0)
             send_to_max(mess, "/del")
 
+for message in gmail.database.values():
+    send_to_max(message, "/aj")
+
 thread.start_new_thread(monitor_inbox, ("foo", "bar"))
 thread.start_new_thread(pass_on_messages, ("foo", "bar"))
 
