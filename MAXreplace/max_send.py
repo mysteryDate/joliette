@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 """
 A liason between GMontior and previously written maxpatch
 """
@@ -15,6 +16,8 @@ FILTERED_LABELS = ["Refuser", "RefuserAutomatique", "TRASH"]
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 7006
+
+RESPONSE = u"Merci pour ton message! Regarde bien, il apparîtra sous peu sur la Grande Carte Blanche! :)"
 
 osc.initOSCClient(ip=UDP_IP, port=UDP_PORT)
 
@@ -55,3 +58,5 @@ thread.start_new_thread(pass_on_messages, ("foo", "bar"))
 
 while 1:
     pass
+
+# pdb.set_trace()
