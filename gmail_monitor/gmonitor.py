@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 """
 A monitor for a gmail inbox using the gmailAPI
 """
@@ -106,7 +107,7 @@ class Monitor():
         db = etree.Element("DATABASE")
         max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
         max_history_id.text = self.max_history_id
-        for message in self.database.keys():
+        for message in self.database.values():
             elem = etree.SubElement(db, "MESSAGE")
             id_number = etree.SubElement(elem, "ID")
             sender = etree.SubElement(elem, "SENDER")
@@ -266,4 +267,4 @@ class Message():
         self.active = False # Whether we want to display the message
         self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
         self.message = ""
-        self.last_displayed = "" # The most recent time we displayed the message
+        self.last_displayed = "" # The most recent time we displayed the message      
