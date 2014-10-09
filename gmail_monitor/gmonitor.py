@@ -3,9 +3,7 @@
 A monitor for a gmail inbox using the gmailAPI
 """
 
-import httplib2
 import pdb
-import base64
 
 # for creating xml files
 from lxml import etree
@@ -15,6 +13,11 @@ from apiclient.discovery import build
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run
+import base64
+import httplib2
+
+# For sending messages
+from email.mime.text import MIMEText
 
 class Monitor():
     """
@@ -24,8 +27,14 @@ class Monitor():
     database = {} # Some message storage
     filtered_label_ids = []
     filtered_label_names = []
+    # These are sent along to max
+    messages_to_add = []
+    messages_to_delete = [] 
 
-    def __init__(self, match_label, filtered_labels=[], verbose=True):
+    EMAIL_ADDRESS = "carte.blanche.joliette@gmail.com"
+    RESPONSE_ADDRESS = "@desksms.appspotmail.com"
+
+    def __init__(self, match_label, filtered_labels=[], verbose=False):
         """
         match_label is a string for the label we look under (e.x. "SMS")
         filteredLabels is a list of strings of label names to be filtered
@@ -36,7 +45,7 @@ class Monitor():
         CLIENT_SECRET_FILE = 'client_secret.json'
 
         # Check https://developers.google.com/gmail/api/auth/scopes for all available scopes
-        OAUTH_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
+        OAUTH_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
 
         # Location of the credentials storage file
         STORAGE = Storage('gmail.storage')
@@ -97,8 +106,8 @@ class Monitor():
         db = etree.Element("DATABASE")
         max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
         max_history_id.text = self.max_history_id
-        for message_igmaild in self.database.keys():
-            message = self.database[message_igmaild]
+        for message_id in self.database.keys():
+            message = self.database[message_id]
             elem = etree.SubElement(db, "MESSAGE")
             id_number = etree.SubElement(elem, "ID")
             sender = etree.SubElement(elem, "SENDER")
@@ -106,7 +115,7 @@ class Monitor():
             time = etree.SubElement(elem, "TIME_RECEIVED")
             last_displayed = etree.SubElement(elem, "LAST_DISPLAYED")
             message_text = etree.SubElement(elem, "MESSAGE_TEXT")
-            id_number.text = message_igmaild
+            id_number.text = message_id
             sender.text = message.sender
             active_value.text = str(message.active)
             time.text = message.time
@@ -156,23 +165,28 @@ class Monitor():
                     try:
                         messageData = self.service.users().messages().get(
                             userId='me', id=message_id, format='minimal').execute()
-                        if any([_ for _ in messageData['labelIds'] if _ in self.FILTERED_LABELS]):
+                        if any([_ for _ in messageData['labelIds'] if _ in self.filtered_label_ids]):
                             if self.database[messageData['id']].active == True:
                                 self.database[messageData['id']].active = False
                                 status = "Deactivated"
+                                self.messages_to_delete.append(self.database[message_id])
                         else:
                             if self.database[messageData['id']].active == False:
                                 self.database[messageData['id']].active = True
                                 status = "Activated"
-                    except:
+                                self.messages_to_add.append(self.database[message_id])
+                    except Exception as e:
+                        if self._verbose: print (e)
                         # It was fully deleted
                         status = "Deleted"
+                        self.messages_to_delete.append(self.database[message_id])
                         del self.database[message_id]
                     if status != "Unchanged" and self._verbose:
                         print report_string, status
                 # Then it must be new
                 else:
-                    self.add_message_to_database(message_id)
+                    if self.add_message_to_database(message_id):
+                        self.messages_to_add.append(self.database[message_id])
                         
     def add_message_to_database(self, message_id):
         """
@@ -190,8 +204,8 @@ class Monitor():
         new_message_entry.active = True
         for entry in new_message_data['payload']['headers']:
             if entry['name'] == 'From':
-                # Phone number without area code
-                new_message_entry.sender = entry['value'].split('+')[1].split('"')[0][4:]
+                # Phone number with area code
+                new_message_entry.sender = entry['value'].split('+')[1].split('"')[0][-10:]
             if entry['name'] == 'Date':
                 new_message_entry.time = entry['value']
         text = new_message_data['payload']['body']['data']
@@ -204,20 +218,6 @@ class Monitor():
             print str(message_id)+"\t| "+new_message_entry.message+"\t| Added"
         return True
 
-    def start(self, interval=2):
-        """
-        Start polling the inbox
-        interval is time in seconds between polls
-        if it is too low (<~0.5), you may exceed the rate limit
-        """
-        pass
-
-    def stop(self):
-        """
-        Stops polling
-        """
-        pass
-
     def print_database(self):
         """
         Print the current database to the terminal
@@ -227,6 +227,19 @@ class Monitor():
         for messageId in self.database.keys():
             mess = self.database[messageId]
             print messageId, "\t|", mess.sender, "\t|", mess.time, "\t|", mess.message
+
+    def respond(self, message_id, response_text):
+        """
+        Send a response to the sender of message_id
+        """
+        response = MIMEText(response_text.encode('utf-8'))
+        response['to'] = self.database[message_id].sender + self.RESPONSE_ADDRESS
+        response['from'] = self.EMAIL_ADDRESS
+        response = {'raw': base64.b64encode(response.as_string())}
+        try:
+            self.service.users().messages().send(userId='me', body=response).execute()
+        except Exception as e: 
+            if _self.verbose: print(e)
 
     def populate(self):
         """
