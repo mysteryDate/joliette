@@ -5,15 +5,10 @@ A liason between GMontior and previously written maxpatch
 """
 
 import gmonitor
-from sys import getsizeof
 import simpleOSC as osc
 import thread
 import time
 import pdb
-
-# For sending messages
-from email.mime.text import MIMEText
-import base64
 
 MATCH_LABEL = "SMS"
 FILTERED_LABELS = ["Refuser", "RefuserAutomatique", "TRASH"]
