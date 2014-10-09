@@ -39,7 +39,7 @@ class Monitor():
         CLIENT_SECRET_FILE = 'client_secret.json'
 
         # Check https://developers.google.com/gmail/api/auth/scopes for all available scopes
-        OAUTH_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
+        OAUTH_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
 
         # Location of the credentials storage file
         STORAGE = Storage('gmail.storage')

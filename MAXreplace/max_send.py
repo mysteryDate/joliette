@@ -39,7 +39,7 @@ gmail.load("message_database.xml")
 def monitor_inbox(foo, bar):
     while True:
         gmail.update()
-        time.sleep(0.5)
+        time.sleep(2)
 
 def pass_on_messages(foo, bar):
     while True:
