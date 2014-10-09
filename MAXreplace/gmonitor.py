@@ -3,9 +3,7 @@
 A monitor for a gmail inbox using the gmailAPI
 """
 
-import httplib2
 import pdb
-import base64
 
 # for creating xml files
 from lxml import etree
@@ -15,6 +13,11 @@ from apiclient.discovery import build
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run
+import base64
+import httplib2
+
+# For sending messages
+from email.mime.text import MIMEText
 
 class Monitor():
     """
@@ -27,6 +30,9 @@ class Monitor():
     # These are sent along to max
     messages_to_add = []
     messages_to_delete = [] 
+
+    EMAIL_ADDRESS = "carte.blanche.joliette@gmail.com"
+    RESPONSE_ADDRESS = "@desksms.appspotmail.com"
 
     def __init__(self, match_label, filtered_labels=[], verbose=False):
         """
@@ -221,6 +227,19 @@ class Monitor():
         for messageId in self.database.keys():
             mess = self.database[messageId]
             print messageId, "\t|", mess.sender, "\t|", mess.time, "\t|", mess.message
+
+    def respond(self, message_id, response_text):
+        """
+        Send a response to the sender of message_id
+        """
+        response = MIMEText(response_text.encode('utf-8'))
+        response['to'] = self.database[message_id].sender + self.RESPONSE_ADDRESS
+        response['from'] = self.EMAIL_ADDRESS
+        response = {'raw': base64.b64encode(response.as_string())}
+        try:
+            self.service.users().messages().send(userId='me', body=response).execute()
+        except Exception as e: 
+            if _self.verbose: print(e)
 
     def populate(self):
         """

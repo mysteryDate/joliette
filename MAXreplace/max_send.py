@@ -11,15 +11,19 @@ import thread
 import time
 import pdb
 
+# For sending messages
+from email.mime.text import MIMEText
+import base64
+
 MATCH_LABEL = "SMS"
 FILTERED_LABELS = ["Refuser", "RefuserAutomatique", "TRASH"]
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 7006
 
-RESPONSE = u"Merci pour ton message! Regarde bien, il apparîtra sous peu sur la Grande Carte Blanche! :)"
+RESPONSE = u"Merci pour ton message! Regarde bien, il apparaîtra sous peu sur la Grande Carte Blanche! :)"
 
-osc.initOSCClient(ip=UDP_IP, port=UDP_PORT)
+# osc.initOSCClient(ip=UDP_IP, port=UDP_PORT)
 
 def send_to_max(message_object, direction):
     """
@@ -36,27 +40,37 @@ def send_to_max(message_object, direction):
 gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
 gmail.load("message_database.xml")
 
-def monitor_inbox(foo, bar):
-    while True:
-        gmail.update()
-        time.sleep(2)
+# def monitor_inbox(foo, bar):
+#     while True:
+#         gmail.update()
+#         time.sleep(2)
 
-def pass_on_messages(foo, bar):
-    while True:
-        if len(gmail.messages_to_add) > 0:
-            mess = gmail.messages_to_add.pop(0)
-            send_to_max(mess, "/aj")
-        if len(gmail.messages_to_delete) > 0:
-            mess = gmail.messages_to_delete.pop(0)
-            send_to_max(mess, "/del")
+# def pass_on_messages(foo, bar):
+#     while True:
+#         if len(gmail.messages_to_add) > 0:
+#             mess = gmail.messages_to_add.pop(0)
+#             send_to_max(mess, "/aj")
+#         if len(gmail.messages_to_delete) > 0:
+#             mess = gmail.messages_to_delete.pop(0)
+#             send_to_max(mess, "/del")
 
-for message in gmail.database.values():
-    send_to_max(message, "/aj")
+# def respond(message_object):
+#     message = MIMEText(RESPONSE.encode('utf-8'))
+#     message['to'] = message_object.sender + "@desksms.appspotmail.com"
+#     message['from'] = "carte.blanche.joliette@gmail.com"
+#     message = {'raw': base64.b64encode(message.as_string())}
+#     try:
+#         gmail.service.users().messages().send(userId='me', body=message).execute()
+#     except Exception as e: print(e)
 
-thread.start_new_thread(monitor_inbox, ("foo", "bar"))
-thread.start_new_thread(pass_on_messages, ("foo", "bar"))
 
-while 1:
-    pass
+# for message in gmail.database.values():
+#     send_to_max(message, "/aj")
 
-# pdb.set_trace()
+# thread.start_new_thread(monitor_inbox, ("foo", "bar"))
+# thread.start_new_thread(pass_on_messages, ("foo", "bar"))
+
+# while 1:
+    # pass
+
+pdb.set_trace()
