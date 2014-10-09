@@ -88,13 +88,13 @@ class Monitor():
         tree = etree.parse(file_path)
         for entry in tree.findall('MESSAGE'):
             new_message = Message()
-            newId = unicode(entry.find("ID").text)
+            new_message.id = unicode(entry.find("ID").text)
             new_message.active = bool(entry.find("ACTIVE").text)
             new_message.time = unicode(entry.find("TIME_RECEIVED").text)
             new_message.sender = unicode(entry.find("SENDER").text)
             new_message.last_displayed = unicode(entry.find("LAST_DISPLAYED").text)
             new_message.message = entry.find("MESSAGE_TEXT").text
-            self.database[newId] = new_message
+            self.database[new_message.id] = new_message
         self.max_history_id = unicode(tree.find("MAX_HISTORY_ID").text)
         if self._verbose:
             print "Loaded", len(tree.findall('MESSAGE')), "messages"
@@ -106,8 +106,7 @@ class Monitor():
         db = etree.Element("DATABASE")
         max_history_id = etree.SubElement(db, "MAX_HISTORY_ID")
         max_history_id.text = self.max_history_id
-        for message_id in self.database.keys():
-            message = self.database[message_id]
+        for message in self.database.keys():
             elem = etree.SubElement(db, "MESSAGE")
             id_number = etree.SubElement(elem, "ID")
             sender = etree.SubElement(elem, "SENDER")
@@ -115,7 +114,7 @@ class Monitor():
             time = etree.SubElement(elem, "TIME_RECEIVED")
             last_displayed = etree.SubElement(elem, "LAST_DISPLAYED")
             message_text = etree.SubElement(elem, "MESSAGE_TEXT")
-            id_number.text = message_id
+            id_number.text = message.id
             sender.text = message.sender
             active_value.text = str(message.active)
             time.text = message.time
@@ -195,6 +194,7 @@ class Monitor():
         Returns true if the message was added, false otherwise
         """
         new_message_entry = Message()
+        new_message_entry.id = message_id
         new_message_data = self.get_message(message_id)
         if not new_message_data:
             return False # Couln't get the message, it's probably deleted
@@ -261,6 +261,7 @@ class Message():
     A text message received into the mailbox
     """
     def __init__(self):
+        self.id = "" # The gmail id of the message, will also be its key in the database
         self.sender = "" # The phone number of the sender
         self.active = False # Whether we want to display the message
         self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
