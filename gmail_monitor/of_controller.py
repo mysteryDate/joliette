@@ -21,6 +21,7 @@ RESPONSE = u"Merci pour ton message! Regarde bien, il apparaîtra sous peu sur l
 
 gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
 gmail.load("message_database.xml")
+startTime = time.time()
 
 while True:
     gmail.update()
@@ -33,11 +34,19 @@ while True:
 
         phone = message_object.sender
         # Add dashes to phone number
-        phone = ('-').join([phone[:3], phone[3:6], phone[6:]]) 
+        phone = ('-').join([phone[3:6], phone[6:]]) 
         output = phone + ": " + message_object.message
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(output.encode('utf-8'), (UDP_IP, UDP_PORT))
+
+        if startTime - time.time() > 900: # 15 minutes
+            gmail.save("message_database.xml")
+            # re-initialize the monitor
+            gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
+            gmail.load("message_database.xml")
+            time.sleep(10) # seems like a good idea
+            startTime = time.time()
 
     time.sleep(2)
 
