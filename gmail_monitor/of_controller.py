@@ -21,8 +21,6 @@ RESPONSE = u"Merci pour ton message! Regarde bien, il apparaîtra sous peu sur l
 gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
 gmail.load("message_database.xml")
 
-wait_time = 0.5
-
 while True:
     gmail.update()
     if len(gmail.messages_to_add) > 0:
@@ -40,7 +38,6 @@ while True:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(output.encode('utf-8'), (UDP_IP, UDP_PORT))
 
-        wait_time += 0.5
-    time.sleep(wait_time)
+    time.sleep(2)
 
 pdb.set_trace()
