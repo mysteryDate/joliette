@@ -12,24 +12,52 @@ void ofApp::setup(){
     
     font.loadFont("shimmerbold_opentype.ttf", 30, true, true);
     
+    textMessageInput.Create();
+    textMessageInput.Bind(7011);
+    textMessageInput.SetNonBlocking(true);
+    message = "Hello";
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
 
+    int message_size = 100000;
+    char textMessage[message_size];
+//    textMessageInput.Receive(textMessage, message_size);
+    
+    if (textMessage[0] != 0) {
+        message = textMessage;
+    }
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
 
-    current_picture.draw(0, 0);
-    font.drawString("Hello", 50, 50);
+    int imgWidth = current_picture.width;
+    int imgHeight = current_picture.height;
+    float widthRatio = WINDOW_WIDTH / imgWidth;
+    float heightRatio = WINDOW_HEIGHT / imgHeight;
+    if (widthRatio < heightRatio) {
+        widthRatio = heightRatio;
+    }
+    else
+        heightRatio = widthRatio;
+    current_picture.draw(0, 0, ofGetWindowWidth(), ofGetWindowHeight());
+    font.drawString(message, 50, 50);
     
+    stringstream reportStream;
+    reportStream << "Framerate: " << ofToString((ofGetFrameRate())) << endl;
+    ofDrawBitmapString(reportStream.str(), 100,600);
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     
+    if (key == 'f' || key == 'F') {
+        ofToggleFullscreen();
+    }
 }
 
 //--------------------------------------------------------------
@@ -51,12 +79,15 @@ void ofApp::mouseDragged(int x, int y, int button){
 void ofApp::mousePressed(int x, int y, int button){
 
     current_picture_index++;
-    cout << current_picture_index;
-    cout << picture_directory.numFiles();
     if (current_picture_index == picture_directory.numFiles()) {
         current_picture_index = 0;
     }
-    current_picture.loadImage(picture_directory.getPath(current_picture_index));
+    int next_picture_index = current_picture_index + 1;
+    if (next_picture_index == picture_directory.numFiles()) {
+        next_picture_index = 0;
+    }
+    current_picture = next_picture;
+    next_picture.loadImage(picture_directory.getPath(current_picture_index));
 }
 
 //--------------------------------------------------------------

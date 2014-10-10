@@ -1,6 +1,10 @@
 #pragma once
 
 #include "ofMain.h"
+#include "ofxNetwork.h"
+
+#define WINDOW_WIDTH 1024
+#define WINDOW_HEIGHT 768
 
 class ofApp : public ofBaseApp{
 
@@ -25,5 +29,8 @@ class ofApp : public ofBaseApp{
     ofDirectory picture_directory;
     
     ofTrueTypeFont font;
+    string message;
+    
+    ofxUDPManager textMessageInput;
 		
 };
