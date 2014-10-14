@@ -23,7 +23,7 @@ FILTERED_LABELS = ["Refuser", "RefuserAutomatique", "TRASH"]
 RESPONSE = u"Merci pour ton message! Regarde bien, il apparaîtra sous peu sur la Grande Carte Blanche! :)"
 
 gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
-# gmail.load("message_database.xml")
+gmail.load("message_database.xml")
 PROGRAM_START_TIME = time.time()
 NO_REPEAT_LENGTH = 5
 EXCLUDED_MESSAGES = []
@@ -49,7 +49,6 @@ def GetNextMessage(excluded_messages):
         if ratio > max_ratio:
             max_ratio = ratio
             best_id = message.id
-    print time.time() - start_time
     return gmail.database[best_id]
 
 
@@ -87,7 +86,7 @@ while True:
         # re-initialize the monitor
         gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
         gmail.load("message_database.xml")
-        time.sleep(10) # seems like a good idea
+        time.sleep(5) # seems like a good idea
         PROGRAM_START_TIME = time.time()
 
     if data == "Start":
@@ -104,9 +103,8 @@ while True:
         gmail.load("message_database.xml")
         PROGRAM_START_TIME = time.time()
 
-    time.sleep(2)
+    time.sleep(1)
 
-pdb.set_trace()
 
 # Get time in RFC 2822 Internet email standard:
 # time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())

@@ -34,10 +34,8 @@ void ofApp::update(){
     
     int currentTime = ofGetElapsedTimeMillis()/1000;
     if (currentTime % 3 == 0 and message_trigger and currentTime > 1) {
-        // Copypasta from carte blanche project
         string message = "New message please!";
         int success = toPython.Send(message.c_str(), message.length());
-        cout << success << endl;
         message_trigger = false;
     }
     if (currentTime % 2 == 0 and currentTime % 3 != 0){
@@ -78,21 +76,10 @@ void ofApp::keyPressed(int key){
     if (key == 'f' || key == 'F') {
         ofToggleFullscreen();
     }
-}
-
-//--------------------------------------------------------------
-void ofApp::keyReleased(int key){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
-
+    if (key == 's') {
+        string message = "Shutdown";
+        int success = toPython.Send(message.c_str(), message.length());
+    }
 }
 
 //--------------------------------------------------------------
@@ -108,24 +95,4 @@ void ofApp::mousePressed(int x, int y, int button){
     }
     current_picture = next_picture;
     next_picture.loadImage(picture_directory.getPath(current_picture_index));
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::windowResized(int w, int h){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){ 
-
 }
