@@ -17,6 +17,12 @@ void ofApp::setup(){
     textMessageInput.SetNonBlocking(true);
     message = "Hello";
     
+    toPython.Create();
+    toPython.Connect("127.0.0.1", 7012); // Assuming local machine for now
+    toPython.SetNonBlocking(true);
+    
+    message_trigger = false;
+    
 }
 
 //--------------------------------------------------------------
@@ -24,7 +30,19 @@ void ofApp::update(){
 
     int message_size = 100000;
     char textMessage[message_size];
-//    textMessageInput.Receive(textMessage, message_size);
+    textMessageInput.Receive(textMessage, message_size);
+    
+    int currentTime = ofGetElapsedTimeMillis()/1000;
+    if (currentTime % 3 == 0 and message_trigger and currentTime > 1) {
+        // Copypasta from carte blanche project
+        string message = "New message please!";
+        int success = toPython.Send(message.c_str(), message.length());
+        cout << success << endl;
+        message_trigger = false;
+    }
+    if (currentTime % 2 == 0 and currentTime % 3 != 0){
+        message_trigger = true;
+    }
     
     if (textMessage[0] != 0) {
         message = textMessage;
@@ -48,7 +66,9 @@ void ofApp::draw(){
     font.drawString(message, 50, 50);
     
     stringstream reportStream;
-    reportStream << "Framerate: " << ofToString((ofGetFrameRate())) << endl;
+    reportStream
+    << "Framerate: " << ofToString((ofGetFrameRate())) << endl
+    << "Time: " << ofToString(ofGetElapsedTimeMillis()/1000) << endl;
     ofDrawBitmapString(reportStream.str(), 100,600);
 }
 

@@ -77,6 +77,13 @@ class Monitor():
                     self.filtered_label_ids.append(label['id'])
                     self.filtered_label_names.append(label['name'])
 
+        # Initialize max_history_id
+        threads = self.service.users().threads().list(userId='me').execute()
+        if threads['threads']:
+           for thread in threads['threads']:
+               if thread['historyId'] > self.max_history_id:
+                   self.max_history_id = thread['historyId']
+
         if verbose:
             self._verbose = True
         else:

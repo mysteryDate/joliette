@@ -32,5 +32,8 @@ class ofApp : public ofBaseApp{
     string message;
     
     ofxUDPManager textMessageInput;
+    ofxUDPManager toPython;
+    
+    bool message_trigger;
 		
 };
