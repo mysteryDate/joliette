@@ -40,7 +40,7 @@ while True:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(output.encode('utf-8'), (UDP_IP, UDP_PORT))
 
-        if startTime - time.time() > 900: # 15 minutes
+        if time.time() - startTime > 900: # 15 minutes
             gmail.save("message_database.xml")
             # re-initialize the monitor
             gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
