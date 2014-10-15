@@ -32,6 +32,7 @@ def GetNextMessage(excluded_messages):
     """
     A helper function to find the best message to next display
     Probably too bruteforcey
+    It's actually linear, which I now know is good enough
     """
     start_time = time.time()
     max_ratio = 0

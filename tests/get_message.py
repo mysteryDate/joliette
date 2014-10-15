@@ -4,9 +4,9 @@ import gc
 import pdb
 import random
 
-import plotly.plotly as py
-from plotly.graph_objs import *
-py.sign_in("mysteryDate", "a6fd7sm5jr")
+# import plotly.plotly as py
+# from plotly.graph_objs import *
+# py.sign_in("mysteryDate", "a6fd7sm5jr")
 
 class Message():
     """
@@ -19,6 +19,7 @@ class Message():
         self.message = ""
         self.last_displayed = "" # The most recent time we displayed the message      
 
+# IT"S LINEAR, DUMBASS
 def GetNextMessage():
     """
     A helper function to find the best message to next display
@@ -40,7 +41,7 @@ def GetNextMessage():
 
 database = {}
 results = {}
-MAX_SIZE = 1000
+MAX_SIZE = 10
 
 for size in range(MAX_SIZE):
     # Initialize
@@ -58,17 +59,17 @@ for size in range(MAX_SIZE):
     now += random.randrange(30000000)
     new_message.last_displayed = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime(now))
     database[new_message.id] = new_message
+
     # test 
-    gc.disable()
-    ptr_time = time.time()
-    GetNextMessage()
-    results[size + 1] = time.time() - ptr_time
-    gc.enable()
-    print size
+gc.disable()
+ptr_time = time.time()
+GetNextMessage()
+results[MAX_SIZE] = time.time() - ptr_time
+gc.enable()
 
 for entry in results:
     print entry, results[entry]
 
-trace = Scatter(x=results.keys(), y=results.values())
-data = Data([trace])
-plot_url = py.plot(data, filename='get_message')
+# trace = Scatter(x=results.keys(), y=results.values())
+# data = Data([trace])
+# plot_url = py.plot(data, filename='get_message')
