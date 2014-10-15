@@ -24,7 +24,7 @@ RESPONSE = u"Merci pour ton message! Regarde bien, il apparaîtra sous peu sur l
 
 gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
 gmail.load("message_database.xml")
-PROGRAM_START_TIME = time.time()
+# PROGRAM_START_TIME = time.time()
 NO_REPEAT_LENGTH = 5
 EXCLUDED_MESSAGES = []
 
@@ -41,14 +41,13 @@ def GetNextMessage(excluded_messages):
             continue
         sent_time = time.strptime(message.time, "%a, %d %b %Y %H:%M:%S +0000")
         time_since_sent = calendar.timegm(time.gmtime()) - calendar.timegm(sent_time)
-        time_since_displayed = float('inf')
-        if message.last_displayed != "None": # The message has never been displayed
-            displayed_time = time.strptime(message.last_displayed, "%a, %d %b %Y %H:%M:%S +0000")
-            time_since_displayed = calendar.timegm(time.gmtime()) - calendar.timegm(displayed_time)
+        displayed_time = time.strptime(message.last_displayed, "%a, %d %b %Y %H:%M:%S +0000")
+        time_since_displayed = calendar.timegm(time.gmtime()) - calendar.timegm(displayed_time)
         ratio = float(time_since_displayed) / time_since_sent
         if ratio > max_ratio:
             max_ratio = ratio
             best_id = message.id
+    print time.time() - start_time
     return gmail.database[best_id]
 
 
@@ -81,13 +80,13 @@ while True:
         if len(EXCLUDED_MESSAGES) > NO_REPEAT_LENGTH:
             EXCLUDED_MESSAGES.pop(0)
 
-    if time.time() - PROGRAM_START_TIME > 900: # 15 minutes
-        gmail.save("message_database.xml")
-        # re-initialize the monitor
-        gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
-        gmail.load("message_database.xml")
-        time.sleep(5) # seems like a good idea
-        PROGRAM_START_TIME = time.time()
+    # if time.time() - PROGRAM_START_TIME > 900: # 15 minutes
+    #     gmail.save("message_database.xml")
+    #     # re-initialize the monitor
+    #     gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
+    #     gmail.load("message_database.xml")
+    #     time.sleep(5) # seems like a good idea
+    #     PROGRAM_START_TIME = time.time()
 
     if data == "Start":
         gmail = gmonitor.Monitor(MATCH_LABEL, FILTERED_LABELS, verbose=True)
