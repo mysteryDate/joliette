@@ -30,7 +30,6 @@ class Monitor():
     filtered_label_names = []
     # These are sent along to max
     messages_to_add = []
-    messages_to_delete = [] 
 
     EMAIL_ADDRESS = "carte.blanche.joliette@gmail.com"
     RESPONSE_ADDRESS = "@desksms.appspotmail.com"
@@ -97,7 +96,6 @@ class Monitor():
         for entry in tree.findall('MESSAGE'):
             new_message = Message()
             new_message.id = unicode(entry.find("ID").text)
-            new_message.active = bool(entry.find("ACTIVE").text)
             new_message.time = unicode(entry.find("TIME_RECEIVED").text)
             new_message.sender = unicode(entry.find("SENDER").text)
             new_message.last_displayed = unicode(entry.find("LAST_DISPLAYED").text)
@@ -118,13 +116,11 @@ class Monitor():
             elem = etree.SubElement(db, "MESSAGE")
             id_number = etree.SubElement(elem, "ID")
             sender = etree.SubElement(elem, "SENDER")
-            active_value = etree.SubElement(elem, "ACTIVE")
             time = etree.SubElement(elem, "TIME_RECEIVED")
             last_displayed = etree.SubElement(elem, "LAST_DISPLAYED")
             message_text = etree.SubElement(elem, "MESSAGE_TEXT")
             id_number.text = message.id
             sender.text = message.sender
-            active_value.text = str(message.active)
             time.text = message.time
             last_displayed.text = message.last_displayed
             message_text.text = message.message
@@ -164,32 +160,23 @@ class Monitor():
                         modified_messages.add(message['id'])
             if self._verbose: print "Number of new messages:", len(modified_messages)
             for message_id in modified_messages:
-                # Check to see if it's moved to or from a filtered folder
+                # Check to see if it's moved to a filtered folder
                 if message_id in self.database:
-                    report_string = str(message_id)+"\t| "+self.database[message_id].message+"\t|"
                     status = "Unchanged"
-                    # pdb.set_trace()
+                    report_string = str(message_id)+"\t| "+self.database[message_id].message+"\t|"
                     try:
                         messageData = self.service.users().messages().get(
                             userId='me', id=message_id, format='minimal').execute()
                         if any([_ for _ in messageData['labelIds'] if _ in self.filtered_label_ids]):
-                            if self.database[messageData['id']].active == True:
-                                self.database[messageData['id']].active = False
-                                status = "Deactivated"
-                                self.messages_to_delete.append(self.database[message_id])
-                        else:
-                            if self.database[messageData['id']].active == False:
-                                self.database[messageData['id']].active = True
-                                status = "Activated"
-                                self.messages_to_add.append(self.database[message_id])
+                            # It has been moved somewhere where we no longer want it
+                            status = "Deleted"
+                            del self.database[message_id]
                     except Exception as e:
                         if self._verbose: print (e)
                         # It was fully deleted
                         status = "Deleted"
-                        self.messages_to_delete.append(self.database[message_id])
                         del self.database[message_id]
-                    if status != "Unchanged" and self._verbose:
-                        print report_string, status
+                    if self._verbose:   print report_string, status
                 # Then it must be new
                 else:
                     if self.add_message_to_database(message_id):
@@ -271,7 +258,6 @@ class Message():
     def __init__(self):
         self.id = "" # The gmail id of the message, will also be its key in the database
         self.sender = "" # The phone number of the sender
-        self.active = False # Whether we want to display the message
         self.time = "" # Gmail reports in GM time, so I don't want to do time.ctime()
         self.message = ""
         self.last_displayed = "" # The most recent time we displayed the message      
