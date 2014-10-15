@@ -203,6 +203,7 @@ class Monitor():
                 new_message_entry.sender = entry['value'].split('+')[1].split('"')[0][-10:]
             if entry['name'] == 'Date':
                 new_message_entry.time = entry['value']
+                new_message_entry.last_displayed = new_message_entry.time
         text = new_message_data['payload']['body']['data']
         text = base64.urlsafe_b64decode(text.encode('UTF'))
         new_message_entry.message = text.strip('\r\n ').split('====')[0].rstrip(
